@@ -10,9 +10,13 @@ from .config import BotConfig, load_bot_config
 from .formatters import format_ip_problems_from_state, format_proxy_problems_from_report
 from .ip_monitor import IPMonitor
 from .proxy_monitor import ProxyMonitor
-from .telegram_api import TelegramClient
+from .telegram_api import TelegramAPIError, TelegramClient
 
 logger = logging.getLogger(__name__)
+
+
+class BotActionError(RuntimeError):
+    pass
 
 REPLY_KEYBOARD = {
     "keyboard": [
@@ -51,23 +55,35 @@ class NetBot:
     def handle_start(self, chat_id: int) -> None:
         self.telegram.send_message(chat_id, "Выбери действие:", REPLY_KEYBOARD)
 
+    def _run_ip_check(self, chat_id: int) -> None:
+        logger.info("Manual IP check requested by chat_id=%s", chat_id)
+        self.telegram.send_message(chat_id, "Запускаю IP Tester...", REPLY_KEYBOARD)
+        self.ip_monitor.run()
+        self.telegram.send_message(chat_id, self.format_ip_problems(), REPLY_KEYBOARD)
+
+    def _run_proxy_check(self, chat_id: int) -> None:
+        logger.info("Manual proxy check requested by chat_id=%s", chat_id)
+        self.telegram.send_message(chat_id, "Запускаю Proxy Tester...", REPLY_KEYBOARD)
+        self.proxy_monitor.run_tester()
+        self.telegram.send_message(chat_id, self.format_proxy_problems(), REPLY_KEYBOARD)
+
+    def _send_ip_problems(self, chat_id: int) -> None:
+        self.telegram.send_message(chat_id, self.format_ip_problems(), REPLY_KEYBOARD)
+
+    def _send_proxy_problems(self, chat_id: int) -> None:
+        self.telegram.send_message(chat_id, self.format_proxy_problems(), REPLY_KEYBOARD)
+
     def handle_text(self, chat_id: int, text: str) -> None:
         text = text.strip()
-        if text == "Test IP":
-            self.telegram.send_message(chat_id, "Запускаю IP Tester...", REPLY_KEYBOARD)
-            self.ip_monitor.run()
-            self.telegram.send_message(chat_id, self.format_ip_problems(), REPLY_KEYBOARD)
-            return
-        if text == "Test Proxy":
-            self.telegram.send_message(chat_id, "Запускаю Proxy Tester...", REPLY_KEYBOARD)
-            self.proxy_monitor.run_tester()
-            self.telegram.send_message(chat_id, self.format_proxy_problems(), REPLY_KEYBOARD)
-            return
-        if text == "IP problems":
-            self.telegram.send_message(chat_id, self.format_ip_problems(), REPLY_KEYBOARD)
-            return
-        if text == "Proxy problems":
-            self.telegram.send_message(chat_id, self.format_proxy_problems(), REPLY_KEYBOARD)
+        actions = {
+            "Test IP": self._run_ip_check,
+            "Test Proxy": self._run_proxy_check,
+            "IP problems": self._send_ip_problems,
+            "Proxy problems": self._send_proxy_problems,
+        }
+        action = actions.get(text)
+        if action:
+            action(chat_id)
             return
         self.telegram.send_message(chat_id, "Нажми кнопку ниже.", REPLY_KEYBOARD)
 
@@ -87,15 +103,27 @@ class NetBot:
                     msg = upd["message"]
                     chat_id = msg.get("chat", {}).get("id")
                     if chat_id != self.config.allowed_chat_id:
+                        logger.warning("Ignoring update from unauthorized chat_id=%s", chat_id)
                         continue
-                    if msg.get("text") == "/start":
-                        self.handle_start(chat_id)
-                    else:
-                        self.handle_text(chat_id, msg.get("text") or "")
+                    try:
+                        if msg.get("text") == "/start":
+                            self.handle_start(chat_id)
+                        else:
+                            self.handle_text(chat_id, msg.get("text") or "")
+                    except TelegramAPIError:
+                        logger.exception("Telegram API error while handling message for chat_id=%s", chat_id)
+                    except Exception:
+                        logger.exception("Unexpected error while handling message for chat_id=%s", chat_id)
             except (TimeoutError, socket.timeout, urllib.error.URLError):
+                logger.warning("Temporary polling error, retrying")
                 time.sleep(2)
                 continue
+            except TelegramAPIError:
+                logger.exception("Telegram API polling failure")
+                time.sleep(3)
+                continue
             except Exception:
+                logger.exception("Unexpected polling loop failure")
                 time.sleep(3)
                 continue
             time.sleep(1)
