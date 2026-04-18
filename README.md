@@ -11,10 +11,6 @@ Unified network monitoring project extracted from three older workspace projects
 - `test_bot` — Telegram control bot  
   `test_bot` — Telegram-бот для управления
 
-This repository is structured to be portable to GitHub as a single project.
-
-Этот репозиторий подготовлен так, чтобы его можно было удобно выкладывать на GitHub как единый проект.
-
 ## Features / Возможности
 
 - Telegram bot with simple menu:  
