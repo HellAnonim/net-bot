@@ -51,37 +51,94 @@ net_bot/
 
 ## Configuration
 
-The repository uses two config layers:
+This project uses configuration files from the `config/` directory.
 
-- example configs committed to git:
-  - `config/*.example.json`
-- local runtime configs ignored by git:
-  - `config/*.local.json`
+The application looks for local runtime configs first:
+- `*.local.json`
 
-The code tries `*.local.json` first and falls back to `*.example.json`.
+If a local file is missing, it falls back to the corresponding example file:
+- `*.example.json`
 
-### Telegram token
+### `config/bot.example.json`
 
-Use environment variable for monitors:
+Telegram bot configuration.
 
-```bash
-export NET_BOT_TELEGRAM_TOKEN="<telegram-bot-token>"
-```
+Purpose:
+- defines which Telegram chat is allowed to use the bot
+- can optionally provide a bot token for local bot runtime
 
-The bot itself can also use local `config/bot.local.json` if needed.
+Main fields:
+- `allowed_chat_id` — Telegram chat ID allowed to interact with the bot
+- `bot_api_key` — optional Telegram bot token
 
-### Config files
+Notes:
+- for public repositories, keep this file as an example only
+- for local usage, create `config/bot.local.json`
 
-- `config/bot.example.json` — Telegram bot settings
-- `config/ip_monitor.example.json` — IP monitor settings
-- `config/proxies.example.json` — proxy targets and proxy notification settings
+### `config/ip_monitor.example.json`
 
-### Proxy config
+IP monitor configuration.
 
-`proxies.json` contains both:
+Purpose:
+- defines which IP addresses should be checked
+- defines how the TCP availability check is performed
+- defines where notifications should be sent
 
-- proxy target definitions
-- proxy notification settings such as `target_chat` and `timezone`
+Main fields:
+- `ips` — list of IP addresses to monitor
+- `target_chat` — Telegram chat ID that receives monitor notifications
+- `port` — TCP port to check
+- `timezone` — timezone used for timestamps and quiet hours
+- `quiet_start` — quiet hours start (hour)
+- `quiet_end` — quiet hours end (hour)
+- `rounds` — number of check rounds before final status is decided
+- `interval_seconds` — delay between rounds
+- `timeout_seconds` — timeout for a single TCP connection attempt
+
+Notes:
+- IP monitor notifications use `NET_BOT_TELEGRAM_TOKEN`
+- typical use case: SSH availability monitoring on port `22`
+
+### `config/proxies.example.json`
+
+Proxy monitor configuration.
+
+Purpose:
+- defines proxy targets to test
+- defines how proxy checks are performed
+- defines where proxy notifications should be sent
+
+Top-level fields:
+- `targets` — list of proxy definitions
+- `timeout_seconds` — timeout for a single proxy check
+- `rounds` — number of rounds
+- `interval_seconds` — delay between rounds
+- `target_chat` — Telegram chat ID for proxy notifications
+- `timezone` — timezone used in notification timestamps
+
+Each target in `targets` may include:
+- `name` — human-readable proxy name
+- `type` — proxy type: `mtproto`, `socks5`, or `http`
+- `host` — proxy host or IP
+- `port` — proxy port
+- `enabled` — whether the target should be checked
+
+Additional fields by type:
+
+For `mtproto`:
+- `secret` — optional MTProto secret
+
+For `socks5`:
+- `username` — optional username
+- `password` — optional password
+
+For `http`:
+- `username` — optional username
+- `password` — optional password
+
+Notes:
+- proxy monitor notifications use `NET_BOT_TELEGRAM_TOKEN`
+- MTProto checks are network-level probes, not full Telegram client authorization
 
 ## Running the project
 
