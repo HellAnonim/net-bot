@@ -29,5 +29,7 @@
   ],
   "timeout_seconds": 5,
   "rounds": 3,
-  "interval_seconds": 1
+  "interval_seconds": 1,
+  "target_chat": "123456789",
+  "timezone": "Europe/Moscow"
 }

@@ -28,7 +28,6 @@ net_bot/
   config/
     bot.example.json
     ip_monitor.example.json
-    proxy_notify.example.json
     proxies.example.json
     *.local.json          # local secrets / real infra, gitignored
   logs/
@@ -53,6 +52,10 @@ The project now separates public examples from local secrets:
   - `config/*.local.json`
 
 The code looks for `*.local.json` first and falls back to `*.example.json`.
+
+`proxies.json` now contains both:
+- proxy target definitions
+- proxy notification settings (`target_chat`, `timezone`)
 
 Telegram token policy:
 - kept only in local `config/bot.json` / `config/bot.local.json` if you want

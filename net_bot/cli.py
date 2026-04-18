@@ -42,7 +42,7 @@ def main() -> None:
     if args.command == "run-proxy-monitor":
         monitor = ProxyMonitor(
             targets_config=root / "config" / "proxies.local.json",
-            notify_config=root / "config" / "proxy_notify.local.json",
+            notify_config=root / "config" / "proxies.local.json",
             report_path=root / "state" / "proxy-report.json",
             prev_report_path=root / "state" / "proxy-report.prev.json",
             down_log_path=root / "logs" / "proxy-monitor-down.log",
