@@ -54,6 +54,11 @@ The project now separates public examples from local secrets:
 
 The code looks for `*.local.json` first and falls back to `*.example.json`.
 
+Telegram token policy:
+- kept only in local `config/bot.json` / `config/bot.local.json` if you want
+- monitors use `NET_BOT_TELEGRAM_TOKEN` from environment
+- example configs do not contain `bot_api_key`
+
 Telegram token may also be provided via environment variable:
 
 ```bash

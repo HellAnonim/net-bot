@@ -1,4 +1,3 @@
 {
-  "bot_api_key": "<telegram-bot-token>",
   "allowed_chat_id": 123456789
 }

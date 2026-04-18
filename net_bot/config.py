@@ -50,9 +50,9 @@ def load_ip_monitor_config(path: Path) -> dict[str, Any]:
     if not isinstance(ips, list) or not all(isinstance(ip, str) for ip in ips):
         raise ConfigError("Config field 'ips' must be a list of strings")
 
-    bot_api_key = os.environ.get("NET_BOT_TELEGRAM_TOKEN") or data.get("bot_api_key")
+    bot_api_key = os.environ.get("NET_BOT_TELEGRAM_TOKEN")
     if not isinstance(bot_api_key, str) or not bot_api_key:
-        raise ConfigError("Config field 'bot_api_key' must be a non-empty string (or set NET_BOT_TELEGRAM_TOKEN)")
+        raise ConfigError("Set NET_BOT_TELEGRAM_TOKEN for IP monitor notifications")
 
     rounds = data.get("rounds", 5)
     interval_seconds = data.get("interval_seconds", 60)
@@ -88,9 +88,9 @@ def load_proxy_targets_config(path: Path) -> dict[str, Any]:
 
 def load_proxy_notify_config(path: Path) -> dict[str, Any]:
     data = load_json(path)
-    bot_api_key = os.environ.get("NET_BOT_TELEGRAM_TOKEN") or data.get("bot_api_key")
+    bot_api_key = os.environ.get("NET_BOT_TELEGRAM_TOKEN")
     if not isinstance(bot_api_key, str) or not bot_api_key:
-        raise ConfigError("Config field 'bot_api_key' must be a non-empty string (or set NET_BOT_TELEGRAM_TOKEN)")
+        raise ConfigError("Set NET_BOT_TELEGRAM_TOKEN for proxy monitor notifications")
     return {
         "target_chat": require_str(data, "target_chat"),
         "timezone": require_str(data, "timezone"),

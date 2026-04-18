@@ -5,7 +5,6 @@
     "192.0.2.50"
   ],
   "target_chat": "123456789",
-  "bot_api_key": "<telegram-bot-token>",
   "port": 22,
   "timezone": "Europe/Moscow",
   "quiet_start": 23,
