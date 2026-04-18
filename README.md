@@ -99,12 +99,3 @@ Before pushing publicly, still review:
    - systemd unit examples
    - GitHub Actions / CI
 
-## Why this merge is useful
-
-The old workspace had three separate mini-projects with overlapping logic and duplicated Telegram/API handling. `net_bot` consolidates them into one project with:
-
-- one package
-- one CLI entrypoint
-- one Telegram API client
-- clearer repository structure
-- example configs separated from local secrets
