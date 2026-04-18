@@ -1,0 +1,15 @@
+[Unit]
+Description=net_bot Telegram control bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/net_bot
+Environment=NET_BOT_TELEGRAM_TOKEN=<telegram-bot-token>
+ExecStart=/usr/bin/env python3 -m net_bot.cli --root /opt/net_bot run-bot
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

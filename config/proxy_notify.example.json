@@ -1,0 +1,5 @@
+{
+  "target_chat": "123456789",
+  "timezone": "Europe/Moscow",
+  "bot_api_key": "<telegram-bot-token>"
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=net_bot IP monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/net_bot
+Environment=NET_BOT_TELEGRAM_TOKEN=<telegram-bot-token>
+ExecStart=/usr/bin/env python3 -m net_bot.cli --root /opt/net_bot run-ip-monitor

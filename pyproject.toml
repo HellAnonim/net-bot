@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "net-bot"
+version = "0.1.0"
+description = "Unified Telegram bot for IP and proxy monitoring"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "OpenClaw Workspace" }
+]
+dependencies = []
+
+[project.scripts]
+net-bot = "net_bot.cli:main"
+
+[tool.setuptools]
+packages = ["net_bot"]

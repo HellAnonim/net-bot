@@ -1,0 +1,16 @@
+{
+  "ips": [
+    "203.0.113.10",
+    "198.51.100.25",
+    "192.0.2.50"
+  ],
+  "target_chat": "123456789",
+  "bot_api_key": "<telegram-bot-token>",
+  "port": 22,
+  "timezone": "Europe/Moscow",
+  "quiet_start": 23,
+  "quiet_end": 8,
+  "rounds": 5,
+  "interval_seconds": 60,
+  "timeout_seconds": 3
+}
