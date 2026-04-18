@@ -4,12 +4,15 @@ import json
 import os
 import socket
 import time
+import logging
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .config import load_ip_monitor_config
+from .config import IPMonitorConfig, load_ip_monitor_config
 from .telegram_api import TelegramClient
+
+logger = logging.getLogger(__name__)
 
 
 class IPMonitor:
@@ -54,13 +57,14 @@ class IPMonitor:
                 f.write(f'"{ip}" - "{checked_at_iso}"\n')
 
     def run(self) -> dict:
-        config = load_ip_monitor_config(self.config_path)
-        ips = config["ips"]
-        port = config["port"]
-        tz = ZoneInfo(config["timezone"])
-        rounds = config["rounds"]
-        interval_seconds = config["interval_seconds"]
-        timeout_seconds = config["timeout_seconds"]
+        config: IPMonitorConfig = load_ip_monitor_config(self.config_path)
+        ips = config.ips
+        port = config.port
+        tz = ZoneInfo(config.timezone)
+        rounds = config.rounds
+        interval_seconds = config.interval_seconds
+        timeout_seconds = config.timeout_seconds
+        logger.info("Starting IP monitor: ips=%s port=%s rounds=%s", len(ips), port, rounds)
 
         state = self._load_state(ips)
         servers = state.setdefault("servers", {})
@@ -75,7 +79,7 @@ class IPMonitor:
             if i < rounds - 1:
                 time.sleep(interval_seconds)
 
-        quiet = self._in_quiet_hours(tz, config["quiet_start"], config["quiet_end"])
+        quiet = self._in_quiet_hours(tz, config.quiet_start, config.quiet_end)
         checked_at_iso = datetime.now(tz).isoformat()
         down_now: list[str] = []
         messages: list[str] = []
@@ -105,8 +109,9 @@ class IPMonitor:
         self._log_down_servers(down_now, checked_at_iso)
 
         if messages:
-            tg = TelegramClient(config["bot_api_key"])
+            tg = TelegramClient(config.bot_api_key)
             for text in messages:
-                tg.send_message(config["target_chat"], text)
+                tg.send_message(config.target_chat, text)
 
+        logger.info("IP monitor finished: down=%s notifications=%s", len(down_now), len(messages))
         return state

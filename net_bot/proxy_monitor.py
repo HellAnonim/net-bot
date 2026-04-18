@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import logging
 import os
-import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,8 +12,10 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from .config import load_proxy_notify_config, load_proxy_targets_config
+from .config import ProxyNotifyConfig, ProxyTarget, ProxyTargetsConfig, load_proxy_notify_config, load_proxy_targets_config
 from .telegram_api import TelegramClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,10 +52,10 @@ async def _tcp_connect(host: str, port: int, timeout: float) -> tuple[bool, int 
         return False, None, f"tcp failed: {e}", None
 
 
-async def check_mtproto(target: dict[str, Any], timeout: float) -> CheckResult:
-    name = target.get("name", "mtproto")
-    host, port = target["host"], int(target["port"])
-    secret_ok, secret_msg = _validate_mtproto_secret(target.get("secret"))
+async def check_mtproto(target: ProxyTarget, timeout: float) -> CheckResult:
+    name = target.name or "mtproto"
+    host, port = target.host, int(target.port)
+    secret_ok, secret_msg = _validate_mtproto_secret(target.secret)
     if not secret_ok:
         return CheckResult(name, "mtproto", host, port, False, None, secret_msg)
     ok, latency, detail, conn = await _tcp_connect(host, port, timeout)
@@ -64,11 +66,11 @@ async def check_mtproto(target: dict[str, Any], timeout: float) -> CheckResult:
     return CheckResult(name, "mtproto", host, port, ok, latency, f"{detail}; {secret_msg}")
 
 
-async def check_socks5(target: dict[str, Any], timeout: float) -> CheckResult:
-    name = target.get("name", "socks5")
-    host, port = target["host"], int(target["port"])
-    username = target.get("username")
-    password = target.get("password")
+async def check_socks5(target: ProxyTarget, timeout: float) -> CheckResult:
+    name = target.name or "socks5"
+    host, port = target.host, int(target.port)
+    username = target.username
+    password = target.password
     ok, latency, detail, conn = await _tcp_connect(host, port, timeout)
     if not ok or not conn:
         return CheckResult(name, "socks5", host, port, False, latency, detail)
@@ -100,11 +102,11 @@ async def check_socks5(target: dict[str, Any], timeout: float) -> CheckResult:
         await w.wait_closed()
 
 
-async def check_http(target: dict[str, Any], timeout: float) -> CheckResult:
-    name = target.get("name", "http")
-    host, port = target["host"], int(target["port"])
-    username = target.get("username")
-    password = target.get("password")
+async def check_http(target: ProxyTarget, timeout: float) -> CheckResult:
+    name = target.name or "http"
+    host, port = target.host, int(target.port)
+    username = target.username
+    password = target.password
     ok, latency, detail, conn = await _tcp_connect(host, port, timeout)
     if not ok or not conn:
         return CheckResult(name, "http", host, port, False, latency, detail)
@@ -137,23 +139,23 @@ async def check_http(target: dict[str, Any], timeout: float) -> CheckResult:
         await w.wait_closed()
 
 
-async def check_target(target: dict[str, Any], timeout: float) -> CheckResult:
-    ptype = str(target.get("type", "")).lower().strip()
+async def check_target(target: ProxyTarget, timeout: float) -> CheckResult:
+    ptype = target.type.lower().strip()
     if ptype == "mtproto":
         return await check_mtproto(target, timeout)
     if ptype == "socks5":
         return await check_socks5(target, timeout)
     if ptype == "http":
         return await check_http(target, timeout)
-    return CheckResult(target.get("name", "unknown"), ptype or "unknown", target.get("host", "?"), int(target.get("port", 0)), False, None, "unsupported type")
+    return CheckResult(target.name or "unknown", ptype or "unknown", target.host, int(target.port), False, None, "unsupported type")
 
 
-async def run_checks(config: dict[str, Any]) -> dict[str, Any]:
-    timeout = float(config.get("timeout_seconds", 5))
-    rounds = int(config.get("rounds", 1))
-    interval = float(config.get("interval_seconds", 1))
-    targets = list(config.get("targets", []))
-    active_targets = [t for t in targets if t.get("enabled", True)]
+async def run_checks(config: ProxyTargetsConfig) -> dict[str, Any]:
+    timeout = float(config.timeout_seconds)
+    rounds = int(config.rounds)
+    interval = float(config.interval_seconds)
+    targets = list(config.targets)
+    active_targets = [t for t in targets if t.enabled]
     all_rounds: list[list[CheckResult]] = []
     if not active_targets:
         return {"checked_at": int(time.time()), "rounds": rounds, "targets": []}
@@ -200,7 +202,8 @@ class ProxyMonitor:
                 f.write(f'"{addr}" - "{proto}" - "{checked_at_iso}"\n')
 
     def run_tester(self) -> dict[str, Any]:
-        cfg = load_proxy_targets_config(self.targets_config)
+        cfg: ProxyTargetsConfig = load_proxy_targets_config(self.targets_config)
+        logger.info("Starting proxy monitor: targets=%s rounds=%s", len(cfg.targets), cfg.rounds)
         report = asyncio.run(run_checks(cfg))
         if self.report_path.exists():
             self.prev_report_path.write_text(self.report_path.read_text(encoding="utf-8"), encoding="utf-8")
@@ -208,8 +211,8 @@ class ProxyMonitor:
         return report
 
     def build_message(self) -> str:
-        notify_config = load_proxy_notify_config(self.notify_config)
-        tz = ZoneInfo(notify_config["timezone"])
+        notify_config: ProxyNotifyConfig = load_proxy_notify_config(self.notify_config)
+        tz = ZoneInfo(notify_config.timezone)
         data = json.loads(self.report_path.read_text(encoding="utf-8"))
         targets = data.get("targets", [])
         down = [t for t in targets if t.get("status") != "UP"]
@@ -235,7 +238,10 @@ class ProxyMonitor:
         return "\n".join(lines)
 
     def notify_if_needed(self) -> None:
-        cfg = load_proxy_notify_config(self.notify_config)
+        cfg: ProxyNotifyConfig = load_proxy_notify_config(self.notify_config)
         msg = self.build_message()
         if msg:
-            TelegramClient(cfg["bot_api_key"]).send_message(cfg["target_chat"], msg)
+            TelegramClient(cfg.bot_api_key).send_message(cfg.target_chat, msg)
+            logger.info("Proxy monitor notification sent")
+        else:
+            logger.info("Proxy monitor finished without notifications")

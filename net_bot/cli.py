@@ -4,11 +4,13 @@ import argparse
 import json
 from pathlib import Path
 
-from .bot_app import NetBot
-from .ip_monitor import IPMonitor
-from .proxy_monitor import ProxyMonitor, run_checks
-from .config import load_proxy_targets_config
 import asyncio
+
+from .bot_app import NetBot
+from .config import load_proxy_targets_config
+from .ip_monitor import IPMonitor
+from .logging_setup import configure_logging
+from .proxy_monitor import ProxyMonitor, run_checks
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    configure_logging()
     args = build_parser().parse_args()
     root = Path(args.root).resolve()
 

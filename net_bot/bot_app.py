@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import socket
 import time
 import urllib.error
 from datetime import datetime
 from pathlib import Path
 
-from .config import load_bot_config
+from .config import BotConfig, load_bot_config
 from .ip_monitor import IPMonitor
 from .proxy_monitor import ProxyMonitor
 from .telegram_api import TelegramClient
+
+logger = logging.getLogger(__name__)
 
 REPLY_KEYBOARD = {
     "keyboard": [
@@ -25,8 +28,8 @@ REPLY_KEYBOARD = {
 class NetBot:
     def __init__(self, root: Path):
         self.root = root
-        self.config = load_bot_config(root / "config" / "bot.local.json")
-        self.telegram = TelegramClient(self.config["bot_api_key"])
+        self.config: BotConfig = load_bot_config(root / "config" / "bot.local.json")
+        self.telegram = TelegramClient(self.config.bot_api_key)
         self.ip_monitor = IPMonitor(
             config_path=root / "config" / "ip_monitor.local.json",
             state_path=root / "state" / "ip-monitor-state.json",
@@ -104,6 +107,7 @@ class NetBot:
         self.telegram.send_message(chat_id, "Нажми кнопку ниже.", REPLY_KEYBOARD)
 
     def run(self) -> None:
+        logger.info("Starting Telegram bot polling")
         offset = None
         while True:
             try:
@@ -117,7 +121,7 @@ class NetBot:
                         continue
                     msg = upd["message"]
                     chat_id = msg.get("chat", {}).get("id")
-                    if chat_id != self.config["allowed_chat_id"]:
+                    if chat_id != self.config.allowed_chat_id:
                         continue
                     if msg.get("text") == "/start":
                         self.handle_start(chat_id)
