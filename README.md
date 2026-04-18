@@ -186,6 +186,22 @@ The `systemd/` directory contains example service and timer units for:
 
 Use them as templates for deployment.
 
+## Testing
+
+Run the local test suite with:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+A GitHub Actions workflow is also included in:
+
+```text
+.github/workflows/tests.yml
+```
+
+It runs the test suite automatically on push and pull request.
+
 ## Typical deployment flow
 
 1. Copy example configs to local configs
@@ -193,6 +209,15 @@ Use them as templates for deployment.
 3. Set `NET_BOT_TELEGRAM_TOKEN`
 4. Test manually with CLI commands
 5. Enable systemd services/timers if needed
+
+## Production notes
+
+Recommended production approach:
+
+- use `config/*.local.json` for local runtime settings
+- keep secrets in environment variables where possible
+- run monitors via systemd timers or another scheduler
+- keep `state/` and `logs/` writable for the service user
 
 ## Notes
 
