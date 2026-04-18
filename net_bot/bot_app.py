@@ -114,8 +114,8 @@ class NetBot:
                         logger.exception("Telegram API error while handling message for chat_id=%s", chat_id)
                     except Exception:
                         logger.exception("Unexpected error while handling message for chat_id=%s", chat_id)
-            except (TimeoutError, socket.timeout, urllib.error.URLError):
-                logger.warning("Temporary polling error, retrying")
+            except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+                logger.debug("Temporary polling condition: %s", exc)
                 time.sleep(2)
                 continue
             except TelegramAPIError:
