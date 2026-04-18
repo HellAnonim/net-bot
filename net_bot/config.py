@@ -14,7 +14,7 @@ class ConfigError(ValueError):
 @dataclass(frozen=True)
 class BotConfig:
     bot_api_key: str
-    allowed_chat_id: int
+    allowed_chat_ids: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -178,7 +178,16 @@ def load_bot_config(path: Path) -> BotConfig:
     token = os.environ.get("NET_BOT_TELEGRAM_TOKEN") or data.get("bot_api_key")
     if not isinstance(token, str) or not token:
         raise ConfigError("Config field 'bot_api_key' must be a non-empty string (or set NET_BOT_TELEGRAM_TOKEN)")
+
+    raw_allowed_ids = data.get("allowed_chat_ids")
+    if raw_allowed_ids is not None:
+        if not isinstance(raw_allowed_ids, list) or not raw_allowed_ids or not all(isinstance(v, int) for v in raw_allowed_ids):
+            raise ConfigError("Config field 'allowed_chat_ids' must be a non-empty list of integers")
+        allowed_chat_ids = tuple(raw_allowed_ids)
+    else:
+        allowed_chat_ids = (require_int(data, "allowed_chat_id"),)
+
     return BotConfig(
         bot_api_key=token,
-        allowed_chat_id=require_int(data, "allowed_chat_id"),
+        allowed_chat_ids=allowed_chat_ids,
     )

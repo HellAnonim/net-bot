@@ -68,7 +68,8 @@ Purpose:
 - can optionally provide a bot token for local bot runtime
 
 Main fields:
-- `allowed_chat_id` — Telegram chat ID allowed to interact with the bot
+- `allowed_chat_id` — single Telegram chat ID allowed to interact with the bot
+- `allowed_chat_ids` — optional list of Telegram chat IDs for multi-user access
 - `bot_api_key` — optional Telegram bot token
 
 Notes:

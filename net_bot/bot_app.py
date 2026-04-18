@@ -102,7 +102,7 @@ class NetBot:
                         continue
                     msg = upd["message"]
                     chat_id = msg.get("chat", {}).get("id")
-                    if chat_id != self.config.allowed_chat_id:
+                    if chat_id not in self.config.allowed_chat_ids:
                         logger.warning("Ignoring update from unauthorized chat_id=%s", chat_id)
                         continue
                     try:
