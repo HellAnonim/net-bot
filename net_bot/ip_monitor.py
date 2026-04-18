@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import socket
 import time
-import logging
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -13,6 +14,14 @@ from .config import IPMonitorConfig, load_ip_monitor_config
 from .telegram_api import TelegramClient
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class IPMonitorRunResult:
+    state: dict
+    down_now: list[str]
+    messages: list[str]
+    checked_at_iso: str
 
 
 class IPMonitor:
@@ -56,15 +65,13 @@ class IPMonitor:
             for ip in down_ips:
                 f.write(f'"{ip}" - "{checked_at_iso}"\n')
 
-    def run(self) -> dict:
-        config: IPMonitorConfig = load_ip_monitor_config(self.config_path)
+    def execute(self, config: IPMonitorConfig) -> IPMonitorRunResult:
         ips = config.ips
         port = config.port
         tz = ZoneInfo(config.timezone)
         rounds = config.rounds
         interval_seconds = config.interval_seconds
         timeout_seconds = config.timeout_seconds
-        logger.info("Starting IP monitor: ips=%s port=%s rounds=%s", len(ips), port, rounds)
 
         state = self._load_state(ips)
         servers = state.setdefault("servers", {})
@@ -105,13 +112,25 @@ class IPMonitor:
                 elif should_notify_up:
                     messages.append(f"IP-тест сообщает: сервер {ip} снова доступен ({now_label})")
 
-        self._save_state(state)
-        self._log_down_servers(down_now, checked_at_iso)
+        return IPMonitorRunResult(
+            state=state,
+            down_now=down_now,
+            messages=messages,
+            checked_at_iso=checked_at_iso,
+        )
 
-        if messages:
+    def run(self) -> dict:
+        config: IPMonitorConfig = load_ip_monitor_config(self.config_path)
+        logger.info("Starting IP monitor: ips=%s port=%s rounds=%s", len(config.ips), config.port, config.rounds)
+
+        result = self.execute(config)
+        self._save_state(result.state)
+        self._log_down_servers(result.down_now, result.checked_at_iso)
+
+        if result.messages:
             tg = TelegramClient(config.bot_api_key)
-            for text in messages:
+            for text in result.messages:
                 tg.send_message(config.target_chat, text)
 
-        logger.info("IP monitor finished: down=%s notifications=%s", len(down_now), len(messages))
-        return state
+        logger.info("IP monitor finished: down=%s notifications=%s", len(result.down_now), len(result.messages))
+        return result.state
