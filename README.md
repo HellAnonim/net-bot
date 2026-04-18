@@ -2,74 +2,90 @@
 
 Network monitoring project.
 
-- `ip_tester` — SSH/TCP availability monitoring
-- `proxy_tester` — Telegram proxy checks (MTProto / SOCKS5 / HTTP CONNECT)
-- `test_bot` — Telegram control bot
+`net_bot` combines three practical functions in one repository:
 
-## Features
+- IP availability monitoring over TCP
+- proxy monitoring for Telegram-related proxy types
+- a Telegram bot for manual checks and quick status lookup
 
-- Telegram bot with simple menu:
-  - `Test IP`
-  - `Test Proxy`
-  - `IP problems`
-  - `Proxy problems`
-- IP monitor with Telegram notifications on status changes
-- Proxy monitor with Telegram notifications on DOWN transitions
-- Shared project layout with `config/`, `state/`, `logs/`, and Python package code in `net_bot/`
+## What the project does
 
-## Project layout
+The project can:
+
+- check a list of servers on a TCP port (for example, SSH on port `22`)
+- check proxies of these types:
+  - `mtproto`
+  - `socks5`
+  - `http` (`CONNECT` probe)
+- send Telegram notifications when monitored targets go down
+- provide a simple Telegram bot menu for manual checks
+
+## Main components
+
+- `net_bot/ip_monitor.py` — IP/TCP monitor
+- `net_bot/proxy_monitor.py` — proxy checker and notifier
+- `net_bot/bot_app.py` — Telegram bot
+- `net_bot/cli.py` — CLI entrypoint
+- `net_bot/telegram_api.py` — minimal Telegram API client
+- `net_bot/config.py` — config loading and validation
+
+## Repository structure
 
 ```text
 net_bot/
   README.md
   README_RU.md
   .gitignore
+  pyproject.toml
+  LICENSE
   config/
     bot.example.json
     ip_monitor.example.json
     proxies.example.json
-    *.local.json          # local secrets / real infra, gitignored
+    *.local.json
   logs/
   state/
+  systemd/
   net_bot/
-    __init__.py
-    bot_app.py
-    cli.py
-    config.py
-    ip_monitor.py
-    proxy_monitor.py
-    telegram_api.py
 ```
 
-## Configuration model
+## Configuration
 
-The project separates public examples from local secrets.
+The repository uses two config layers:
 
-- committed to git:
+- example configs committed to git:
   - `config/*.example.json`
-- local runtime files (ignored by git):
+- local runtime configs ignored by git:
   - `config/*.local.json`
 
-The code looks for `*.local.json` first and falls back to `*.example.json`.
+The code tries `*.local.json` first and falls back to `*.example.json`.
 
-`proxies.json` now contains both:
-- proxy target definitions
-- proxy notification settings (`target_chat`, `timezone`)
+### Telegram token
 
-Telegram token policy:
-- kept only in local `config/bot.json` / `config/bot.local.json` if you want
-- monitors use `NET_BOT_TELEGRAM_TOKEN` from environment
-- example configs do not contain `bot_api_key`
-
-Telegram token may also be provided via environment variable:
+Use environment variable for monitors:
 
 ```bash
 export NET_BOT_TELEGRAM_TOKEN="<telegram-bot-token>"
 ```
 
-## Run
+The bot itself can also use local `config/bot.local.json` if needed.
 
-From project root:
+### Config files
+
+- `config/bot.example.json` — Telegram bot settings
+- `config/ip_monitor.example.json` — IP monitor settings
+- `config/proxies.example.json` — proxy targets and proxy notification settings
+
+### Proxy config
+
+`proxies.json` contains both:
+
+- proxy target definitions
+- proxy notification settings such as `target_chat` and `timezone`
+
+## Running the project
+
+From the repository root:
 
 ```bash
 python3 -m net_bot.cli run-bot
@@ -78,24 +94,51 @@ python3 -m net_bot.cli run-proxy-monitor
 python3 -m net_bot.cli check-proxies
 ```
 
-Or install as a local package and use the CLI entrypoint:
+Or install locally:
 
 ```bash
 pip install -e .
 net-bot run-bot
 ```
 
-## GitHub readiness notes
+## Telegram bot commands and actions
 
-This project is safer to publish because local runtime configs are gitignored.
+The Telegram bot provides a simple keyboard with these actions:
 
-Before pushing publicly, still review:
+- `Test IP` — run the IP monitor manually
+- `Test Proxy` — run the proxy monitor manually
+- `IP problems` — show the latest IP issues from saved state
+- `Proxy problems` — show the latest proxy issues from saved state
 
-1. `config/proxies.example.json` — may still contain real infrastructure data if you copied it from production
-2. `state/` and `logs/` — runtime data should usually stay out of the repo
-3. add optional polish if desired:
-   - `LICENSE`
-   - `pyproject.toml`
-   - systemd unit examples
-   - GitHub Actions / CI
+## State and logs
 
+Runtime files are stored in:
+
+- `state/` — latest reports and monitor state
+- `logs/` — down-event logs
+
+These files are operational data and should normally stay local.
+
+## systemd examples
+
+The `systemd/` directory contains example service and timer units for:
+
+- Telegram bot
+- IP monitor
+- proxy monitor
+
+Use them as templates for deployment.
+
+## Typical deployment flow
+
+1. Copy example configs to local configs
+2. Fill in real targets and chat settings
+3. Set `NET_BOT_TELEGRAM_TOKEN`
+4. Test manually with CLI commands
+5. Enable systemd services/timers if needed
+
+## Notes
+
+- `mtproto` checks are network-level probes, not full Telegram client authorization
+- proxy checks are focused on practical reachability and handshake validation
+- runtime files in `state/` and `logs/` are not intended for public repository content
