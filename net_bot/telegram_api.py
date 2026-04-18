@@ -6,6 +6,10 @@ import urllib.request
 from typing import Any
 
 
+class TelegramAPIError(RuntimeError):
+    pass
+
+
 class TelegramClient:
     def __init__(self, token: str):
         self.token = token
@@ -18,7 +22,10 @@ class TelegramClient:
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            result = json.loads(resp.read().decode("utf-8"))
+        if not result.get("ok", False):
+            raise TelegramAPIError(f"Telegram API {method} failed: {result}")
+        return result
 
     def send_message(self, chat_id: int | str, text: str, reply_markup: dict[str, Any] | None = None) -> None:
         data: dict[str, Any] = {"chat_id": chat_id, "text": text}
