@@ -1,6 +1,6 @@
 # net_bot
 
-Unified network monitoring project extracted from three older workspace projects.
+Network monitoring project.
 
 - `ip_tester` — SSH/TCP availability monitoring
 - `proxy_tester` — Telegram proxy checks (MTProto / SOCKS5 / HTTP CONNECT)

@@ -1,6 +1,6 @@
 # net_bot
 
-Единый проект для сетевого мониторинга, собранный из трёх старых workspace-проектов.
+Проект для сетевого мониторинга.
 
 - `ip_tester` — мониторинг доступности SSH/TCP
 - `proxy_tester` — проверка Telegram-прокси (MTProto / SOCKS5 / HTTP CONNECT)
